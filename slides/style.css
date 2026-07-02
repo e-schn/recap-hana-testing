@@ -1,0 +1,13 @@
+/*
+ * Slidev's "Goto" quick-jump dialog (#slidev-goto-dialog, opened with the "g"
+ * key) renders a Fuse.js result list of all slides. With an empty query this
+ * build lists every slide, and because the closed dialog is only shifted up by
+ * a few rem, that slide list leaks into the top-right corner and looks like a
+ * permanent table of contents.
+ *
+ * Hide the result list unless the dialog is actually open. When open the
+ * container gets the `top-5` utility class; when closed it has `-top-20`.
+ */
+#slidev-goto-dialog:not(.top-5) .autocomplete-list {
+  display: none !important;
+}

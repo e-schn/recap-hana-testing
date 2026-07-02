@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Generated CDS types
+@cds-models/
+
+# Build output
+gen/
+mta_archives/
+resources/
+*.mtar
+
+# Local SQLite databases
+*.sqlite
+*.db
+
+# CAP service bindings WITH CREDENTIALS — never commit these
+.cdsrc-private.json
+default-env.json
+.env
+
+# OS / editor
+.DS_Store

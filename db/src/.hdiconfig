@@ -1,0 +1,31 @@
+{
+  "file_suffixes": {
+    "hdbcalculationview": {
+      "plugin_name": "com.sap.hana.di.calculationview"
+    },
+    "hdbtable": {
+      "plugin_name": "com.sap.hana.di.table"
+    },
+    "hdbview": {
+      "plugin_name": "com.sap.hana.di.view"
+    },
+    "hdbsynonym": {
+      "plugin_name": "com.sap.hana.di.synonym"
+    },
+    "hdbsynonymconfig": {
+      "plugin_name": "com.sap.hana.di.synonym.config"
+    },
+    "hdbconstraint": {
+      "plugin_name": "com.sap.hana.di.constraint"
+    },
+    "hdbindex": {
+      "plugin_name": "com.sap.hana.di.index"
+    },
+    "csv": {
+      "plugin_name": "com.sap.hana.di.tabledata.source"
+    },
+    "hdbtabledata": {
+      "plugin_name": "com.sap.hana.di.tabledata"
+    }
+  }
+}

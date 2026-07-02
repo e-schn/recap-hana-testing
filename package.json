@@ -1,0 +1,55 @@
+{
+  "name": "recap-test-hana",
+  "version": "1.0.0",
+  "description": "Testing CAP applications against SAP HANA Cloud with vitest — reCAP demo",
+  "private": true,
+  "dependencies": {
+    "@cap-js/hana": "^2",
+    "@sap/cds": "^9",
+    "@sap/xssec": "^4"
+  },
+  "devDependencies": {
+    "@cap-js/cds-test": ">=0.4.1",
+    "@cap-js/cds-typer": ">=0.1",
+    "@cap-js/cds-types": "^0.16.0",
+    "@cap-js/sqlite": "^2",
+    "@sap/cds-dk": "^9",
+    "@types/node": "^24.0.0",
+    "tsx": "^4",
+    "typescript": "^5",
+    "vitest": "^3"
+  },
+  "imports": {
+    "#cds-models/*": "./@cds-models/*/index.js"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "watch": "cds watch",
+    "build": "cds build --production",
+    "test:sqlite": "NODE_ENV=development CDS_ENV=development CDS_TYPESCRIPT='true' cds_requires_db_credentials_url=:memory: vitest run",
+    "test": "cds bind --exec --profile test vitest run",
+    "test:ts": "CDS_TYPESCRIPT='true' cds bind --exec --profile test vitest run",
+    "deploy:test": "cds deploy --to hana:recap-test-hana-db --profile test --auto-undeploy",
+    "repl:test": "cds bind --exec --profile test cds repl -- --run ."
+  },
+  "cds": {
+    "requires": {
+      "[development]": {
+        "db": "sql"
+      },
+      "[test]": {
+        "db": "hana",
+        "auth": {
+          "kind": "dummy"
+        }
+      },
+      "[production]": {
+        "db": "hana",
+        "auth": "xsuaa"
+      }
+    },
+    "hana": {
+      "deploy-format": "hdbtable"
+    }
+  }
+}
