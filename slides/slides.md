@@ -8,14 +8,23 @@ class: text-center
 transition: slide-left
 mdc: true
 hideInToc: true
+background: '#00192b'
+fonts:
+  sans: 'Inter'
+  mono: 'JetBrains Mono'
+  weights: '400,500,600,700'
 ---
+
+<div class="flex flex-col items-center justify-center gap-4">
+
+<img src="./assets/logo.png" class="w-60" />
 
 # Testing with HANA Cloud
 
-### Automated, production-like testing for SAP CAP
+<div class="text-xl opacity-90">Armin Hatting · Corporate Business Solutions GmbH</div>
 
-<div class="pt-8 opacity-80">
-World Cup 2026 app · native HANA SQL view · HANA <code>dayname()</code> · vitest · <code>cds bind</code>
+<img src="./assets/cbs_logo_white_orange.png" class="w-44" />
+
 </div>
 
 <!--
@@ -46,9 +55,8 @@ hideInToc: true
 ### SAP HANA Cloud
 
 - 🎯 Production-like
-- ✅ Calculation views
-- ✅ `.hdbtable` / functions / procedures
-- ✅ HANA-specific SQL
+- ✅ `.hdbtable` / functions / procedures / calculation views
+- ✅ HANA-specific SQL and Functions
 - ✅ HDI deployment artifacts
 
 </div>
@@ -67,28 +75,10 @@ The point: SQLite is a great approximation, but "native HANA logic" is invisible
 hideInToc: true
 ---
 
-# When you NEED a HANA-backed test
-
-Add one whenever the change touches:
-
-- 📊 **Native HANA SQL views** (`.hdbview`) — e.g. window functions like `RANK()`
-- 🧱 `.hdbtable`, `.hdbcalculationview`, `.hdbfunction`, `.hdbprocedure`, synonyms
-- 🔤 HANA-specific **SQL** and **functions** (`dayname`, regex, spatial, JSON, aggregations)
-- 🔗 Entities annotated **`@cds.persistence.exists`**
-- 🚀 Anything relying on **HDI deployment** / production persistence
-
-<div class="pt-6 opacity-80">
-Rule of thumb: keep fast SQLite unit tests, and gate DB-specific behavior with HANA.
-</div>
-
----
-hideInToc: true
----
-
 # Why vitest?
 
 - Modern, fast, ESM & TypeScript out of the box
-- Works with `@cap-js/cds-test` (`cds.test()` → `GET/POST/expect/axios`)
+- Works with `@cap-js/cds-test`
 - One small config for HANA:
 
 ```ts
@@ -105,7 +95,7 @@ export default defineConfig({
 
 ```json
 // package.json
-"test:local": "NODE_ENV=development ... :memory: vitest run",
+"test:sqlite": "CDS_ENV=development cds_requires_db_credentials_url=:memory: vitest run",
 "test":       "cds bind --exec --profile test vitest run"
 ```
 

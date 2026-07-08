@@ -11,3 +11,60 @@
 #slidev-goto-dialog:not(.top-5) .autocomplete-list {
   display: none !important;
 }
+
+/* -------------------------------------------------------------------------- */
+/* cbs branding: dark background, decorative overlay frame and reCAP logo      */
+/* -------------------------------------------------------------------------- */
+
+/* Every slide gets the dark base colour and light text. */
+.slidev-layout {
+  position: relative;
+  isolation: isolate;
+  background-color: #00192b !important;
+  color: #ffffff;
+}
+
+/* Decorative overlay frame (assets/background_layout.png) on the title slide.
+   z-index: -1 keeps it above the base colour but behind all slide content. */
+.slidev-layout.cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('./assets/background_layout.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Small reCAP logo in the top-right corner of every slide except the cover. */
+.slidev-layout:not(.cover)::after {
+  content: '';
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  width: 110px;
+  height: 110px;
+  background-image: url('./assets/logo.png');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Slide titles in the cbs accent colour. */
+.slidev-layout:not(.cover) h1 {
+  color: #1bb7dd;
+}
+
+/* Code blocks framed to fit the dark cbs colour scheme. */
+.slidev-layout .slidev-code {
+  border: 1px solid rgba(27, 183, 221, 0.35);
+  border-radius: 0.6rem;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  font-size: 0.95em;
+  line-height: 1.55;
+}
