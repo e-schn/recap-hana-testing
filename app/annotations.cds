@@ -82,3 +82,43 @@ annotate WorldCupService.Matches with @(
   homeGoals @title: 'Home Goals';
   awayGoals @title: 'Away Goals';
 };
+
+////////////////////////////////////////////////////////////////////////////
+// Players — List Report + Object Page (Fiori Elements)
+////////////////////////////////////////////////////////////////////////////
+annotate WorldCupService.Players with @(
+  UI: {
+    HeaderInfo: {
+      $Type         : 'UI.HeaderInfoType',
+      TypeName      : 'Player',
+      TypeNamePlural: 'Players',
+      Title         : { Value: name },
+      Description   : { Value: position }
+    },
+    SelectionFields: [ position ],
+    LineItem: [
+      { Value: shirtNo,   Label: 'No.' },
+      { Value: name,      Label: 'Player' },
+      { Value: position,  Label: 'Position' },
+      { Value: team.name, Label: 'Team' },
+      { Value: birthDate, Label: 'Born' }
+    ],
+    Facets: [
+      { $Type: 'UI.ReferenceFacet', Label: 'Details', Target: '@UI.FieldGroup#Main' }
+    ],
+    FieldGroup #Main: {
+      Data: [
+        { Value: name },
+        { Value: position },
+        { Value: shirtNo },
+        { Value: birthDate },
+        { Value: team.name, Label: 'Team' }
+      ]
+    }
+  }
+) {
+  name      @title: 'Player';
+  position  @title: 'Position';
+  shirtNo   @title: 'No.';
+  birthDate @title: 'Born';
+};

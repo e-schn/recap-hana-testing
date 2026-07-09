@@ -1,11 +1,9 @@
 namespace worldcup;
 
 /**
- * Domain model for the "Testing with HANA Cloud" demo — FIFA World Cup 2026.
- *
- * Teams and Matches are plain persisted entities (tables).
- * TeamGoals is the fact table aggregated by a native HANA SQL view
- * (see db/hana-views.cds + db/src/WORLDCUP_TEAM_STANDINGS.hdbview).
+ * Domain model for the "World Cup Squad Explorer" demo.
+ * Teams, Matches, Players are plain persisted entities — they run on
+ * SQLite and HANA alike. No native HANA artifacts in the baseline.
  */
 
 entity Teams {
@@ -14,13 +12,14 @@ entity Teams {
       grp          : String;   // group A..L
       confederation: String;   // UEFA, CONMEBOL, ...
       coach        : String;
+      players      : Association to many Players on players.team = $self;
       matchesHome  : Association to many Matches on matchesHome.homeTeam = $self;
       matchesAway  : Association to many Matches on matchesAway.awayTeam = $self;
 }
 
 entity Matches {
   key ID        : Integer;
-      stage     : String;      // Group, Round of 16, Quarter-final, ...
+      stage     : String;      // Group, Round of 16, ...
       city      : String;
       matchDate : Date;
       homeTeam  : Association to Teams;
@@ -30,13 +29,15 @@ entity Matches {
 }
 
 /**
- * Fact table: goals scored by a team in a single match.
- * Aggregated and ranked per STAGE in the native HANA SQL view
- * WORLDCUP_TEAM_STANDINGS (RANK() window function).
+ * Star players — deliberately hard-to-spell names so fuzzy search
+ * (Part 4) has an obvious payoff. `birthDate` feeds the HANA-only
+ * dayname() view added live in Part 5.
  */
-entity TeamGoals {
-  key ID    : Integer;
-      team  : String;
-      stage : String;
-      goals : Integer;
+entity Players {
+  key ID        : Integer;
+      name      : String;   // Mbappé, Gündoğan, Vinícius Júnior, ...
+      position  : String;   // Goalkeeper, Defender, Midfielder, Forward
+      shirtNo   : Integer;
+      birthDate : Date;
+      team      : Association to Teams;
 }

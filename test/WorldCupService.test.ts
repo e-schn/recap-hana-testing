@@ -14,4 +14,9 @@ describe('WorldCupService — baseline (runs on SQLite and HANA)', () => {
     const { data } = await GET`/odata/v4/worldcup/Matches?$filter=ID eq 1`;
     expect(data.value[0]).to.include({ homeGoals: 2, awayGoals: 1 });
   });
+
+  it('serves Players', async () => {
+    const { data } = await GET`/odata/v4/worldcup/Players`;
+    expect(data.value.length).to.equal(8);
+  });
 });

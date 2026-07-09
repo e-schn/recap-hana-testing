@@ -1,7 +1,0 @@
-VIEW WORLDCUP_TEAM_STANDINGS AS SELECT
-  team  AS TEAM,
-  stage AS STAGE,
-  SUM(goals) AS GOALS,
-  RANK() OVER (PARTITION BY stage ORDER BY SUM(goals) DESC) AS RANK_IN_STAGE
-FROM worldcup_TeamGoals
-GROUP BY team, stage

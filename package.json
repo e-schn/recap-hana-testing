@@ -26,7 +26,7 @@
     "start": "cds-serve",
     "watch": "cds watch",
     "build": "cds build --production",
-    "test:sqlite": "CDS_ENV=development cds_requires_db_credentials_url=:memory: vitest run",
+    "test:sqlite": "NODE_ENV=development CDS_ENV=development cds_requires_db_credentials_url=:memory: vitest run",
     "test": "cds bind --exec --profile test vitest run",
     "test:ts": "CDS_TYPESCRIPT='true' cds bind --exec --profile test vitest run",
     "deploy:test": "cds deploy --to hana:recap-test-hana-db --profile test --auto-undeploy",
