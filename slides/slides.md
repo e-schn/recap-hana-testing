@@ -116,9 +116,10 @@ hideInToc: true
 ---
 
 # CI/CD: HANA tests in the pipeline
+<br> 
 
 ```bash
-# 1. Log in non-interactively
+# 1. Log in
 cf api <api-endpoint>
 cf auth "$CF_USER" "$CF_PASSWORD"
 cf target -o "$CF_ORG" -s "$CF_SPACE"
@@ -127,7 +128,7 @@ cf target -o "$CF_ORG" -s "$CF_SPACE"
 cf create-service hana hdi-shared <cap-test-instance>
 
 # 3. Bind + deploy the model into that container
-cds bind   --to <cap-test-instance> --for test
+cds bind --to <cap-test-instance> --for test
 cds deploy --to hana:<cap-test-instance> --profile test --auto-undeploy
 
 # 4. Run the tests against real HANA
