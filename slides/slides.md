@@ -112,3 +112,59 @@ hideInToc: true
 # 🎬 Demo
 
 ---
+hideInToc: true
+---
+
+# CI/CD: HANA tests in the pipeline
+
+```bash
+# 1. Log in non-interactively
+cf api <api-endpoint>
+cf auth "$CF_USER" "$CF_PASSWORD"
+cf target -o "$CF_ORG" -s "$CF_SPACE"
+
+# 2. Create a dedicated, disposable HANA test container
+cf create-service hana hdi-shared <cap-test-instance>
+
+# 3. Bind + deploy the model into that container
+cds bind   --to <cap-test-instance> --for test
+cds deploy --to hana:<cap-test-instance> --profile test --auto-undeploy
+
+# 4. Run the tests against real HANA
+cds bind --exec --profile test vitest run
+
+# 5. Clean up (optional)
+cf delete-service <cap-test-instance>
+```
+
+<!--
+Key points: dedicated throwaway container per pipeline run, never production data;
+--auto-undeploy keeps it clean; cleanup step runs even on failure (trap/always()).
+-->
+
+---
+layout: center
+class: text-center
+hideInToc: true
+---
+
+<div class="flex flex-col items-center justify-center gap-10">
+
+<div grid="~ cols-2 gap-10" class="pt-4">
+
+<div class="flex flex-col items-center gap-4">
+<img src="./assets/github_qrcode.png" class="w-80 rounded bg-white p-3" />
+<div class="text-2xl opacity-90">Code on GitHub</div>
+<div class="text-lg opacity-70">github.com/cbs-Group/recap-hana-testing</div>
+</div>
+
+<div class="flex flex-col items-center gap-4">
+<img src="./assets/feedback_qrcode.png" class="w-80 rounded bg-white p-3" />
+<div class="text-2xl opacity-90">Your feedback</div>
+</div>
+
+</div>
+
+</div>
+
+---
