@@ -14,5 +14,6 @@ service WorldCupService {
   @cds.redirection.target
   entity Matches as projection on worldcup.Matches;
 
+  @cds.redirection.target
   entity Players as projection on worldcup.Players;
 }

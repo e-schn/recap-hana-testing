@@ -88,16 +88,14 @@ Expected: **all green** on real HANA — the same baseline specs (`WorldCupServi
 
 Add typo-tolerant search the CAP-idiomatic way: `$search` + `@Search.fuzzinessThreshold`.
 
-**4a.** In [srv/worldcup-service.cds](srv/worldcup-service.cds), below the `Players`
-projection, add:
+**4a.** In [srv/worldcup-service.cds](srv/worldcup-service.cds), after the closing
+`}` of the service, add:
 
 ```cds
-  entity Players as projection on worldcup.Players;
-
-  annotate WorldCupService.Players with {
-    @Search.fuzzinessThreshold: 0.7
-    name;
-  };
+annotate WorldCupService.Players with {
+  @Search.fuzzinessThreshold: 0.7
+  name;
+};
 ```
 
 **4b.** Create `test/FuzzySearch.test.ts`:
@@ -140,7 +138,9 @@ One sentence: "Any agent that touches CAP DB code MUST add a HANA-backed test."
 > Add a `PlayerProfiles` view to `WorldCupService` that returns each player's birth
 > weekday using the HANA `dayname()` function, and follow the hana-testing skill.
 
-**5c.** Expected agent edit in [srv/worldcup-service.cds](srv/worldcup-service.cds):
+**5c.** Expected agent edit in [srv/worldcup-service.cds](srv/worldcup-service.cds)
+(the baseline `Players` projection is already `@cds.redirection.target`, so adding
+this second projection of `worldcup.Players` compiles cleanly):
 
 ```cds
   @readonly
