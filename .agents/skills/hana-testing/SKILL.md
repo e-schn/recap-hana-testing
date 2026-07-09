@@ -17,8 +17,11 @@ Add a HANA test whenever the change touches any of:
 
 - **Native HANA artifacts**: `.hdbview`, `.hdbcalculationview`, `.hdbtable`,
   `.hdbfunction`, `.hdbprocedure`, `.hdbsynonym`.
-- **HANA-specific SQL**: functions/expressions that only exist or only behave
-  correctly on HANA (regex functions, aggregations, window functions, spatial, JSON).
+- **HANA-specific SQL & behavior**: functions/expressions that only exist or behave
+  differently on HANA — regex functions, aggregations, window functions, spatial,
+  JSON, and date-name functions like `dayname()`/`monthname()`. Also **fuzzy search**:
+  the OOTB `$search` query option is a plain substring `LIKE` on SQLite but fuzzy
+  `CONTAINS(... FUZZY)` on HANA (tune with `@Search.fuzzinessThreshold`).
 - **Entities annotated `@cds.persistence.exists`** (they map to objects that only
   exist in the HDI container).
 - **HDI deployment artifacts** or anything relying on production-like persistence.
@@ -108,8 +111,16 @@ it('ranks teams via the native HANA view', async () => {
 });
 
 it('uses the HANA dayname() function', async () => {
+  // HANA's dayname() returns the weekday in UPPERCASE (e.g. FRIDAY), unlike
+  // many other databases — assert the exact value you saw on real HANA.
   const { data } = await GET`/odata/v4/worldcup/MatchdaysByWeekday`;
-  expect(data.value).to.containSubset([{ ID: 1, weekday: 'Friday' }]);
+  expect(data.value).to.containSubset([{ ID: 1, weekday: 'FRIDAY' }]);
+});
+
+it('fuzzy search tolerates typos (HANA only)', async () => {
+  // On SQLite $search is LIKE '%Mbape%' -> []; on HANA it fuzzy-matches Mbappé.
+  const { data } = await GET`/odata/v4/worldcup/Players?$search=Mbape`;
+  expect(data.value).to.containSubset([{ name: 'Kylian Mbappé' }]);
 });
 ```
 
@@ -175,6 +186,28 @@ await SELECT.from('WORLDCUP_TEAM_STANDINGS')
 - Treat HANA tests as an integration gate; keep fast SQLite unit tests too.
 - In CI: `cf create-service` → `cds bind --for test` → `cds deploy ... --profile test`
   → `cds bind --exec --profile test vitest run`, then clean up the instance.
+
+## Common Mistakes
+
+- **Assuming a function is HANA-only when it is portable.** CAP standardizes many
+  functions that also work on SQLite — `year/month/day`, `years_between`,
+  `months_between`, `days_between`, `round`, `matchespattern`, and `rank() over`. A
+  test using these passes on SQLite too, so it does NOT prove HANA-specific behavior
+  (false green). Use genuinely non-portable SQL (e.g. `dayname`, `initcap`, regex,
+  fuzzy `$search`). See the CAP "portable functions" list before claiming HANA-only.
+- **Local (SQLite) script hangs connecting HANA to `:memory:`.** vitest sets
+  `NODE_ENV=test`, which keeps the `[test]` (HANA) profile active. The local script
+  MUST set `NODE_ENV=development` (not only `CDS_ENV=development`), otherwise CAP
+  loads the HANA driver against `:memory:` and the run hangs instead of using SQLite.
+- **Stale deployed view after changing a projection.** Changing a CDS view /
+  service projection (adding a computed column, `*` + expression, etc.) changes the
+  generated HANA view. Run `cds deploy ... --profile test` BEFORE `npm test`, or the
+  runtime queries the old view and fails with `invalid column name: <NEWCOL>`.
+- **Ambiguous redirection with a second projection.** Exposing the same entity twice
+  (e.g. a second `as projection on worldcup.Players`) breaks compilation with
+  "add @cds.redirection.target …" because associations can't auto-redirect. Mark one
+  projection `@cds.redirection.target`, or add the HANA-only column to the existing
+  projection via wildcard select (`{ *, dayname(birthDate) as bornOnWeekday }`).
 
 ## Definition of Done for New CAP Code
 
