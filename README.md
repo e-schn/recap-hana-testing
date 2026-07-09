@@ -94,13 +94,12 @@ srv/
   worldcup-service.cds           # WorldCupService: Teams, Matches, Players
   worldcup-service.ts
 test/
-  WorldCupService.test.ts        # baseline — passes on SQLite and HANA
   Players.test.ts                # baseline — passes on SQLite and HANA
 .agents/skills/
   hana-testing/SKILL.md          # AI skill: always add HANA-backed tests
 DEMO.md                          # the live demo runbook (fuzzy search + dayname view)
 vitest.config.ts
-package.json                     # test profile = HANA; scripts
+package.json                     # hana profile = HANA; scripts
 ```
 
 The domain model in `db/schema.cds` is entirely plain, persisted entities:
@@ -190,7 +189,6 @@ npm run test:sqlite
 
 Expected result: **all green**.
 
-- `test/WorldCupService.test.ts` → **PASS** (Teams/Matches on SQLite)
 - `test/Players.test.ts` → **PASS** (Players on SQLite)
 
 That fully-green baseline is the whole point: a working, portable CAP app you can
@@ -223,10 +221,10 @@ cf services
 
 Use a **dedicated instance for tests only** — never point tests at production data.
 
-## Step 4 — Bind the instance to the `test` profile
+## Step 4 — Bind the instance to the `hana` profile
 
 ```bash
-cds bind --to <cap-test-instance> --for test
+cds bind --to <cap-test-instance> --for hana
 ```
 
 CAP stores the binding in `.cdsrc-private.json`.
@@ -235,7 +233,7 @@ CAP stores the binding in `.cdsrc-private.json`.
 ## Step 5 — Deploy the data model into the test container
 
 ```bash
-cds deploy --to hana:<cap-test-instance> --profile test --auto-undeploy
+cds deploy --to hana:<cap-test-instance> --profile hana --auto-undeploy
 # convenience script (bound to recap-test-hana-db): npm run deploy:test
 ```
 
@@ -246,14 +244,14 @@ the container clean between runs.
 
 ```bash
 npm test
-# equivalent to:  cds bind --exec --profile test vitest run
+# equivalent to:  cds bind --exec --profile hana vitest run
 ```
 
 TypeScript projects (this one) also have:
 
 ```bash
 npm run test:ts
-# CDS_TYPESCRIPT='true' cds bind --exec --profile test vitest run
+# CDS_TYPESCRIPT='true' cds bind --exec --profile hana vitest run
 ```
 
 Expected result: the **same baseline specs pass on HANA** too
@@ -265,7 +263,7 @@ the `dayname()` view and watch each go red on SQLite and green on HANA.
 
 ```bash
 npm run repl:test
-# or:  cds bind --exec --profile test cds repl -- --run .
+# or:  cds bind --exec --profile hana cds repl -- --run .
 ```
 
 Then, inside the REPL:
@@ -291,9 +289,9 @@ Run these in order in a pipeline job (add cleanup at the end):
 
 ```bash
 cf create-service hana hdi-shared <cap-test-instance>
-cds bind --to <cap-test-instance> --for test
-cds deploy --to hana:<cap-test-instance> --profile test --auto-undeploy
-cds bind --exec --profile test vitest run
+cds bind --to <cap-test-instance> --for hana
+cds deploy --to hana:<cap-test-instance> --profile hana --auto-undeploy
+cds bind --exec --profile hana vitest run
 cf delete-service <cap-test-instance>   # cleanup
 ```
 
@@ -312,11 +310,11 @@ cf target -o "$CF_ORG" -s "$CF_SPACE"
 | Script            | What it does                                                        |
 | ----------------- | ------------------------------------------------------------------- |
 | `test:sqlite`     | vitest on in-memory **SQLite** (dev profile) — fully green baseline |
-| `test`            | vitest against **bound HANA** (`cds bind --exec --profile test`)    |
+| `test:hana`            | vitest against **bound HANA** (`cds bind --exec --profile hana`)    |
 | `test:ts`         | same as `test`, with `CDS_TYPESCRIPT=true`                          |
 | `watch`           | `cds watch` — local dev server + Fiori preview                      |
-| `deploy:test`     | `cds deploy --to hana:... --profile test --auto-undeploy`           |
-| `repl:test`       | open CAP REPL against bound HANA                                     |
+| `deploy:hana`     | `cds deploy --to hana:... --profile hana --auto-undeploy`           |
+| `repl:hana`       | open CAP REPL against bound HANA                                     |
 | `build`           | `cds build --production` (generates HANA artifacts under `gen/`)    |
 
 ---
@@ -334,26 +332,26 @@ AI generate the `dayname()` view **together with** a HANA-backed test.
 ## Troubleshooting
 
 **`npm test` says no HDI container / Service Manager bound**
-Run `cds bind --to <cap-test-instance> --for test` first; confirm
+Run `cds bind --to <cap-test-instance> --for hana` first; confirm
 `.cdsrc-private.json` exists.
 
 **Deployment fails**
 `cf services` (is the instance "create succeeded"?), check `cf target` org/space and
-permissions, re-run deploy with `--profile test` explicit.
+permissions, re-run deploy with `--profile hana` explicit.
 
 **Tests still use SQLite**
-Ensure `package.json` has `"[test]": { "db": "hana" }` and that you run via
-`cds bind --exec --profile test ...` (not plain `vitest`).
+Ensure `package.json` has `"[hana]": { "db": "hana" }` and that you run via
+`cds bind --exec --profile hana ...` (not plain `vitest`).
 
 **Fuzzy `$search` returns nothing**
 On SQLite, `$search` is only a `LIKE '%…%'` substring match, so a typo like
 `?$search=Mbape` finds nothing — that red is expected. Run the fuzzy-search test via
-`cds bind --exec --profile test ...` against HANA (with the
+`cds bind --exec --profile hana ...` against HANA (with the
 `@Search.fuzzinessThreshold` annotation in place) to get the typo-tolerant match.
 
 **`no such function: dayname`**
 `dayname()` is HANA-only and does not exist on SQLite — this error means you're
-still on SQLite. Run via `cds bind --exec --profile test ...` against the bound HANA
+still on SQLite. Run via `cds bind --exec --profile hana ...` against the bound HANA
 instance, and make sure the model with the `PlayerProfiles` view was deployed
 (`npm run deploy:test`).
 

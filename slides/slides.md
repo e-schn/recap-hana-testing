@@ -54,10 +54,9 @@ hideInToc: true
 
 ### SAP HANA Cloud
 
-- 🎯 Production-like
-- ✅ `.hdbtable` / functions / procedures / calculation views
+- ✅ HANA synonyms / hdbviews / procedures / calculation views
 - ✅ HANA-specific SQL and Functions
-- ✅ HDI deployment artifacts
+- ✅ Production-like
 
 </div>
 
@@ -93,14 +92,8 @@ export default defineConfig({
 });
 ```
 
-```json
-// package.json
-"test:sqlite": "CDS_ENV=development cds_requires_db_credentials_url=:memory: vitest run",
-"test":       "cds bind --exec --profile test vitest run"
-```
-
 <!--
-vitest sets NODE_ENV=test → CAP picks the [test] profile → HANA. Nice alignment.
+cds bind --exec --profile hana selects the [hana] profile → HANA.
 -->
 
 ---
@@ -128,11 +121,11 @@ cf target -o "$CF_ORG" -s "$CF_SPACE"
 cf create-service hana hdi-shared <cap-test-instance>
 
 # 3. Bind + deploy the model into that container
-cds bind --to <cap-test-instance> --for test
-cds deploy --to hana:<cap-test-instance> --profile test --auto-undeploy
+cds bind --to <cap-test-instance> --for hana
+cds deploy --to hana:<cap-test-instance> --profile hana --auto-undeploy
 
 # 4. Run the tests against real HANA
-cds bind --exec --profile test vitest run
+cds bind --exec --profile hana vitest run
 
 # 5. Clean up (optional)
 cf delete-service <cap-test-instance>

@@ -14,4 +14,9 @@ describe('Players — baseline (SQLite and HANA)', () => {
     const { data } = await GET`/odata/v4/worldcup/Players?$search=Yamal`;
     expect(data.value).to.containSubset([{ name: 'Lamine Yamal' }]);
   });
+
+  it('test fuzzy search', async () => {
+    const { data } = await GET`/odata/v4/worldcup/Players?$search=mbappe`;
+    expect(data.value).to.containSubset([{ name: 'Kylian Mbappé' }]);
+  });
 });

@@ -52,12 +52,12 @@ Every new persisted entity, service projection, or native artifact gets:
   },
   "scripts": {
     "test:local": "NODE_ENV=development CDS_ENV=development cds_requires_db_credentials_url=:memory: vitest run",
-    "test": "cds bind --exec --profile test vitest run"
+    "test": "cds bind --exec --profile hana vitest run"
   },
   "cds": {
     "requires": {
       "[development]": { "db": "sqlite" },
-      "[test]": { "db": "hana", "auth": { "kind": "dummy" } }
+      "[hana]": { "db": "hana", "auth": { "kind": "dummy" } }
     }
   }
 }
@@ -81,9 +81,9 @@ export default defineConfig({
 ```
 
 Notes:
-- vitest sets `NODE_ENV=test`, so CAP activates the `[test]` profile (→ HANA)
-  automatically. `test:local` forces `NODE_ENV=development` + in-memory SQLite so
-  `cds.test` auto-deploys a fresh DB.
+- the `test` script runs `cds bind --exec --profile hana`, so CAP activates the
+  `[hana]` profile (→ HANA). `test:local` forces `NODE_ENV=development` + in-memory
+  SQLite so `cds.test` auto-deploys a fresh DB.
 - `cds.test()` returns `{ GET, POST, PUT, DELETE, expect, axios, ... }` and works with
   any runner; with `globals: true` you get `describe/it` without imports.
 
@@ -156,22 +156,22 @@ cf target -o <org> -s <space>
 cf create-service hana hdi-shared <cap-test-instance>
 cf services                    # wait until "create succeeded"
 
-# 3. Bind the instance to the test profile (writes .cdsrc-private.json — gitignored)
-cds bind --to <cap-test-instance> --for test
+# 3. Bind the instance to the hana profile (writes .cdsrc-private.json — gitignored)
+cds bind --to <cap-test-instance> --for hana
 
 # 4. Deploy the data model into the test container
-cds deploy --to hana:<cap-test-instance> --profile test --auto-undeploy
+cds deploy --to hana:<cap-test-instance> --profile hana --auto-undeploy
 
 # 5. Run the tests with the bound credentials
-cds bind --exec --profile test vitest run
+cds bind --exec --profile hana vitest run
 # TypeScript projects:
-CDS_TYPESCRIPT='true' cds bind --exec --profile test vitest run
+CDS_TYPESCRIPT='true' cds bind --exec --profile hana vitest run
 ```
 
 Inspect persisted data when an assertion fails:
 
 ```bash
-cds bind --exec --profile test cds repl -- --run .
+cds bind --exec --profile hana cds repl -- --run .
 # then, in the REPL:
 await SELECT.from('WorldCupService.Teams')
 await SELECT.from('WORLDCUP_TEAM_STANDINGS')
@@ -184,8 +184,8 @@ await SELECT.from('WORLDCUP_TEAM_STANDINGS')
 - Never hardcode credentials — always use `cds bind`. Never commit
   `.cdsrc-private.json`.
 - Treat HANA tests as an integration gate; keep fast SQLite unit tests too.
-- In CI: `cf create-service` → `cds bind --for test` → `cds deploy ... --profile test`
-  → `cds bind --exec --profile test vitest run`, then clean up the instance.
+- In CI: `cf create-service` → `cds bind --for hana` → `cds deploy ... --profile hana`
+  → `cds bind --exec --profile hana vitest run`, then clean up the instance.
 
 ## Common Mistakes
 
@@ -195,13 +195,13 @@ await SELECT.from('WORLDCUP_TEAM_STANDINGS')
   test using these passes on SQLite too, so it does NOT prove HANA-specific behavior
   (false green). Use genuinely non-portable SQL (e.g. `dayname`, `initcap`, regex,
   fuzzy `$search`). See the CAP "portable functions" list before claiming HANA-only.
-- **Local (SQLite) script hangs connecting HANA to `:memory:`.** vitest sets
-  `NODE_ENV=test`, which keeps the `[test]` (HANA) profile active. The local script
-  MUST set `NODE_ENV=development` (not only `CDS_ENV=development`), otherwise CAP
-  loads the HANA driver against `:memory:` and the run hangs instead of using SQLite.
+- **Local (SQLite) script hangs connecting HANA to `:memory:`.** The HANA profile
+  is `[hana]`; the local SQLite script MUST set `NODE_ENV=development` (not only
+  `CDS_ENV=development`), otherwise CAP loads the HANA driver against `:memory:` and
+  the run hangs instead of using SQLite.
 - **Stale deployed view after changing a projection.** Changing a CDS view /
   service projection (adding a computed column, `*` + expression, etc.) changes the
-  generated HANA view. Run `cds deploy ... --profile test` BEFORE `npm test`, or the
+  generated HANA view. Run `cds deploy ... --profile hana` BEFORE `npm test`, or the
   runtime queries the old view and fails with `invalid column name: <NEWCOL>`.
 - **Ambiguous redirection with a second projection.** Exposing the same entity twice
   (e.g. a second `as projection on worldcup.Players`) breaks compilation with
