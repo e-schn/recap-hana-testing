@@ -1,13 +1,19 @@
-# reCAP Demo — Testing CAP Applications with SAP HANA Cloud (vitest)
+# World Cup Squad Explorer — Testing CAP Applications with SAP HANA Cloud (vitest)
 
-A minimal SAP CAP project — themed around the **FIFA World Cup 2026** — that
-demonstrates **automated testing against SAP HANA Cloud** using **vitest**. The
-centerpieces are a **native HANA SQL view** (`WORLDCUP_TEAM_STANDINGS`, using a
-`RANK()` window function) exposed through a CDS entity, and a **HANA-only SQL
-function** (`dayname()`) used directly in the CDS service — both validated on a
-real HANA instance, something in-memory SQLite cannot do. It also ships **Fiori
-Elements annotations**, so you can open a small List Report / Object Page app to
-show what kind of app this is.
+A small SAP CAP project — themed around the **FIFA World Cup 2026** — that
+demonstrates **automated testing against SAP HANA Cloud** using **vitest**.
+
+The committed baseline is a **normal CAP app that runs fully on in-memory SQLite,
+with all tests green**. That's the point: a working, fast, portable app. During the
+demo, **two HANA-only features are added live** — each proven by a test that is
+**red on SQLite and green on real HANA**:
+
+1. **Fuzzy search** the CAP-idiomatic way (`$search` + `@Search.fuzzinessThreshold`).
+2. A **native HANA SQL function** in a CDS view (`dayname()`), generated live by an
+   AI agent following the `hana-testing` skill.
+
+These two features live in **DEMO.md**, not in the baseline — so out of the box
+`npm run test:sqlite` is fully green.
 
 This README is the **complete runbook**: every command shown in the talk is here so
 you can reproduce the demo afterwards.
@@ -18,10 +24,11 @@ you can reproduce the demo afterwards.
 
 ```bash
 npm install
-npm run test:sqlite     # SQLite: baseline passes, HANA-only tests FAIL (by design)
-npm run watch          # open the Fiori preview app (Teams / Matches)
+npm run test:sqlite     # SQLite: baseline — fully GREEN
+npm run watch           # open the Fiori preview app (Teams / Matches / Players)
 # ...set up HANA (below)...
-npm test               # HANA: everything passes
+npm test                # HANA: baseline tests pass here too
+# ...then follow DEMO.md to live-add the two HANA-only features...
 ```
 
 ---
@@ -31,13 +38,19 @@ npm test               # HANA: everything passes
 Most CAP tests run fast on in-memory SQLite. But some behavior only exists on SAP
 HANA and must be tested there:
 
-- Native HANA artifacts: **`.hdbview`**, calculation views, `.hdbtable`, `.hdbfunction`, procedures
-- HANA-specific SQL and functions (`dayname`, regex, aggregations, window/spatial functions)
-- Entities annotated `@cds.persistence.exists`
+- Native HANA artifacts: **`.hdbview`**, calculation views, `.hdbtable`,
+  `.hdbfunction`, procedures
+- HANA-specific SQL and functions (`dayname`, fuzzy `CONTAINS`, spatial/window
+  functions)
+- Fuzzy `$search` behavior (typo tolerance) that SQLite reduces to a plain `LIKE`
 - HDI deployment artifacts and production-like persistence
 
-This project shows the smallest end-to-end example: a native HANA view that ranks
-World Cup teams and a HANA `dayname()` function — both only work on HANA.
+CAP deliberately standardizes many **portable** functions that behave the same on
+every database (e.g. `year/month/day`, `years_between`, `round`, `rank() over`,
+`matchespattern`). A good "HANA-only" example must avoid those — which is exactly
+why this demo uses `dayname()` and fuzzy `$search`, neither of which SQLite can
+reproduce. See
+[CAP-level, portable databases](https://cap.cloud.sap/docs/guides/databases/cap-level-dbs).
 
 ---
 
@@ -48,6 +61,7 @@ Fiori Elements app:
 
 - **Teams** — List Report + Object Page (team, group, confederation, coach)
 - **Matches** — List Report + Object Page (stage, city, date, home/away, score)
+- **Players** — List Report + Object Page (name, position, shirt no, birth date, team)
 
 Run `npm run watch` and open <http://localhost:4004> → follow the **Fiori preview**
 links, or go directly to:
@@ -55,10 +69,13 @@ links, or go directly to:
 ```
 http://localhost:4004/$fiori-preview/WorldCupService/Teams#preview-app
 http://localhost:4004/$fiori-preview/WorldCupService/Matches#preview-app
+http://localhost:4004/$fiori-preview/WorldCupService/Players#preview-app
 ```
 
-The preview runs on SQLite, so Teams/Matches show data immediately — good for
-explaining "what kind of app this is" before diving into the HANA part.
+The preview runs on SQLite, so Teams/Matches/Players show data immediately — good
+for explaining "what kind of app this is" before diving into the HANA part. The
+Players list includes deliberately hard-to-spell names (Kylian Mbappé, İlkay
+Gündoğan, Vinícius Júnior, …) so the fuzzy-search payoff later is obvious.
 
 ---
 
@@ -66,68 +83,85 @@ explaining "what kind of app this is" before diving into the HANA part.
 
 ```
 app/
-  annotations.cds                # Fiori Elements UI annotations (Teams, Matches)
+  annotations.cds                # Fiori Elements UI annotations (Teams, Matches, Players)
 db/
-  schema.cds                     # Teams, Matches, TeamGoals (plain tables)
-  hana-views.cds                 # WORLDCUP_TEAM_STANDINGS  (@cds.persistence.exists)
-  data/                          # deterministic sample data (CSV)
-  src/
-    .hdiconfig                   # maps .hdbview -> view plugin (and other artifacts)
-    WORLDCUP_TEAM_STANDINGS.hdbview   # the native HANA SQL view (RANK window function)
+  schema.cds                     # Teams, Matches, Players (plain persisted tables)
+  data/
+    worldcup-Teams.csv           # deterministic sample data (CSV)
+    worldcup-Matches.csv
+    worldcup-Players.csv
 srv/
-  worldcup-service.cds           # WorldCupService: Teams, Matches, TeamStandings, MatchdaysByWeekday
+  worldcup-service.cds           # WorldCupService: Teams, Matches, Players
   worldcup-service.ts
 test/
   WorldCupService.test.ts        # baseline — passes on SQLite and HANA
-  TeamStandings.test.ts          # native HANA view — passes ONLY on HANA
-  MatchdaysByWeekday.test.ts     # HANA dayname() function — passes ONLY on HANA
-skills/
+  Players.test.ts                # baseline — passes on SQLite and HANA
+.agents/skills/
   hana-testing/SKILL.md          # AI skill: always add HANA-backed tests
+DEMO.md                          # the live demo runbook (fuzzy search + dayname view)
 vitest.config.ts
 package.json                     # test profile = HANA; scripts
 ```
 
-### How the native HANA logic is wired
+The domain model in `db/schema.cds` is entirely plain, persisted entities:
 
-**1. Native SQL view (`TeamStandings`)**
+- **Teams** — `ID`, `name`, `grp`, `confederation`, `coach`; associations to
+  `Players` and `Matches`.
+- **Matches** — `ID`, `stage`, `city`, `matchDate`, `homeTeam`, `awayTeam`,
+  `homeGoals`, `awayGoals`.
+- **Players** — `ID`, `name`, `position`, `shirtNo`, `birthDate`, `team`
+  association. Seeded from `db/data/worldcup-Players.csv` with star players whose
+  accented names (Mbappé, Gündoğan, Vinícius Júnior, Tchouaméni, Álvarez, Yamal,
+  Saka, Rüdiger) make fuzzy search worth having.
 
-1. `db/src/WORLDCUP_TEAM_STANDINGS.hdbview` ranks teams within each stage by
-   `SUM(goals)` using `RANK() OVER (PARTITION BY stage ORDER BY SUM(goals) DESC)`,
-   reading from the `worldcup_TeamGoals` table.
-2. `db/hana-views.cds` exposes it to CDS:
+`srv/worldcup-service.cds` exposes **only** `Teams`, `Matches`, and `Players`.
+There are **no HANA-only entities in the baseline** — everything here runs on both
+SQLite and HANA.
 
-   ```cds
-   @cds.persistence.exists          // object exists in HDI; CAP won't create it
-   entity WORLDCUP_TEAM_STANDINGS {
-     key TEAM          : String;
-     key STAGE         : String;
-         GOALS         : Integer;
-         RANK_IN_STAGE : Integer;
-   }
-   ```
+### The two HANA-only features (added live — see DEMO.md)
 
-   The entity has **no namespace** so its SQL name is exactly
-   `WORLDCUP_TEAM_STANDINGS`, matching the `.hdbview` object id.
-3. `srv/worldcup-service.cds` projects it as `TeamStandings`.
+Both features below are **not** in the committed baseline. They are added on stage
+during the demo, each with a test that is **red on SQLite, green on real HANA**.
 
-On SQLite the view does not exist, so reading `TeamStandings` throws
-`no such table: WORLDCUP_TEAM_STANDINGS` — that red is the whole point of the demo.
+**1. Fuzzy search (CAP-idiomatic)**
 
-**2. HANA-only function (`MatchdaysByWeekday`)**
-
-`srv/worldcup-service.cds` also defines a projection that calls the native HANA
-function `dayname()`:
+Typo tolerance is added the CAP best-practice way — the standard OData `$search`
+query option plus a `@Search.fuzzinessThreshold` annotation, **not** hand-written
+native SQL:
 
 ```cds
-entity MatchdaysByWeekday as select from worldcup.Matches {
-  key ID, city, matchDate,
-      dayname(matchDate) as weekday : String   // HANA-only
+annotate WorldCupService.Players with {
+  @Search.fuzzinessThreshold: 0.7
+  name;
 };
 ```
 
-CAP passes `dayname(...)` straight to SQL. On SQLite this throws
-`no such function: dayname`; on HANA it returns `Friday`, `Saturday`, … — again
-provable only against real HANA.
+On **SQLite**, `$search` compiles to a `LIKE '%…%'` substring match, so
+`?$search=Mbape` returns **nothing**. On **SAP HANA Cloud**, the same query
+compiles to fuzzy `CONTAINS(… FUZZY)`, so `?$search=Mbape` finds **"Kylian
+Mbappé"**. Same standard OData query — only HANA makes it typo-tolerant. See
+[Fuzzy Search (served out of the box)](https://cap.cloud.sap/docs/guides/services/served-ootb#fuzzy-search).
+
+**2. Native HANA SQL function in a CDS view (`dayname()`)**
+
+A `PlayerProfiles` view computes each player's birth weekday using the HANA
+function `dayname()`:
+
+```cds
+@readonly
+entity PlayerProfiles as select from worldcup.Players {
+  key ID,
+      name,
+      position,
+      birthDate,
+      dayname(birthDate) as bornOnWeekday : String   // HANA-only
+};
+```
+
+`dayname()` is **not** one of CAP's portable functions and is absent from SQLite,
+so this errors `no such function: dayname` on SQLite and works on HANA (returning
+e.g. `SUNDAY`). This part is generated **live by an AI agent** guided by the
+`hana-testing` skill, which forces a HANA-backed test.
 
 ---
 
@@ -154,16 +188,15 @@ npx cds-typer "*"      # generate CDS types (optional; improves TS DX)
 npm run test:sqlite
 ```
 
-Expected result:
+Expected result: **all green**.
 
-- `test/WorldCupService.test.ts` → **PASS** (Teams/Matches work on SQLite)
-- `test/TeamStandings.test.ts` → **FAIL** with `no such table: WORLDCUP_TEAM_STANDINGS`
-- `test/MatchdaysByWeekday.test.ts` → **FAIL** with `no such function: dayname`
+- `test/WorldCupService.test.ts` → **PASS** (Teams/Matches on SQLite)
+- `test/Players.test.ts` → **PASS** (Players on SQLite)
 
-This is intentional: it proves the native HANA view and the HANA-only function
-can't be validated on SQLite.
+That fully-green baseline is the whole point: a working, portable CAP app you can
+develop and test at SQLite speed. The HANA-only features come later, live.
 
-> `test:sqlite` forces `NODE_ENV=development` and an in-memory SQLite URL so
+> `test:sqlite` forces `CDS_ENV=development` and an in-memory SQLite URL so
 > `cds.test` auto-deploys a fresh database each run.
 
 ## Step 2 — Cloud Foundry setup
@@ -203,6 +236,7 @@ CAP stores the binding in `.cdsrc-private.json`.
 
 ```bash
 cds deploy --to hana:<cap-test-instance> --profile test --auto-undeploy
+# convenience script (bound to recap-test-hana-db): npm run deploy:test
 ```
 
 `--auto-undeploy` drops artifacts that were removed since the last deploy, keeping
@@ -222,9 +256,10 @@ npm run test:ts
 # CDS_TYPESCRIPT='true' cds bind --exec --profile test vitest run
 ```
 
-Expected result: **all tests pass**, including `TeamStandings` returning
-`Argentina/Group = 7 (#1)`, `Spain/Group = 7 (#1)`, `France/Group = 6 (#3)`, and
-`MatchdaysByWeekday` returning `Friday`, `Saturday`, … for the match dates.
+Expected result: the **same baseline specs pass on HANA** too
+(`WorldCupService.test.ts`, `Players.test.ts`). The only thing that changed is the
+database behind them. From here, follow **DEMO.md** to live-add fuzzy search and
+the `dayname()` view and watch each go red on SQLite and green on HANA.
 
 ## Step 7 — (Optional) Inspect data in the REPL
 
@@ -237,7 +272,7 @@ Then, inside the REPL:
 
 ```js
 await SELECT.from('WorldCupService.Teams')
-await SELECT.from('WORLDCUP_TEAM_STANDINGS')
+await SELECT.from('WorldCupService.Players')
 ```
 
 Useful for troubleshooting failed assertions and checking fixtures.
@@ -276,7 +311,7 @@ cf target -o "$CF_ORG" -s "$CF_SPACE"
 
 | Script            | What it does                                                        |
 | ----------------- | ------------------------------------------------------------------- |
-| `test:sqlite`      | vitest on in-memory **SQLite** (dev profile)                        |
+| `test:sqlite`     | vitest on in-memory **SQLite** (dev profile) — fully green baseline |
 | `test`            | vitest against **bound HANA** (`cds bind --exec --profile test`)    |
 | `test:ts`         | same as `test`, with `CDS_TYPESCRIPT=true`                          |
 | `watch`           | `cds watch` — local dev server + Fiori preview                      |
@@ -288,10 +323,11 @@ cf target -o "$CF_ORG" -s "$CF_SPACE"
 
 ## AI-assisted development
 
-`skills/hana-testing/SKILL.md` is a superpowers-style skill. Any agent that
+`.agents/skills/hana-testing/SKILL.md` is a superpowers-style skill. Any agent that
 discovers it will automatically add HANA-backed vitest tests when generating new
 CAP entities, services, handlers, or native HANA artifacts — so "test with HANA"
-becomes the default, not an afterthought.
+becomes the default, not an afterthought. In the demo, this skill is what makes the
+AI generate the `dayname()` view **together with** a HANA-backed test.
 
 ---
 
@@ -309,15 +345,17 @@ permissions, re-run deploy with `--profile test` explicit.
 Ensure `package.json` has `"[test]": { "db": "hana" }` and that you run via
 `cds bind --exec --profile test ...` (not plain `vitest`).
 
-**`no such table: WORLDCUP_TEAM_STANDINGS` on HANA**
-The native view wasn't deployed. Re-run `cds deploy ... --profile test`; verify
-`db/src/.hdiconfig` maps `hdbview` and that
-`db/src/WORLDCUP_TEAM_STANDINGS.hdbview` references the correct source table name
-(`worldcup_TeamGoals`).
+**Fuzzy `$search` returns nothing**
+On SQLite, `$search` is only a `LIKE '%…%'` substring match, so a typo like
+`?$search=Mbape` finds nothing — that red is expected. Run the fuzzy-search test via
+`cds bind --exec --profile test ...` against HANA (with the
+`@Search.fuzzinessThreshold` annotation in place) to get the typo-tolerant match.
 
-**`no such function: dayname` on HANA**
-You're still on SQLite — `dayname()` only exists on HANA. Run the tests via
-`cds bind --exec --profile test ...` against the bound HANA instance.
+**`no such function: dayname`**
+`dayname()` is HANA-only and does not exist on SQLite — this error means you're
+still on SQLite. Run via `cds bind --exec --profile test ...` against the bound HANA
+instance, and make sure the model with the `PlayerProfiles` view was deployed
+(`npm run deploy:test`).
 
 **Missing/unexpected data**
 Confirm deployment succeeded; use the REPL to inspect rows; ensure sample CSVs are
