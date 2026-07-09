@@ -30,8 +30,6 @@ entity Matches {
 
 /**
  * Star players — deliberately hard-to-spell names so fuzzy search
- * (Part 4) has an obvious payoff. `birthDate` feeds the HANA-only
- * dayname() view added live in Part 5.
  */
 entity Players {
   key ID        : Integer;
