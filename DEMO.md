@@ -128,52 +128,50 @@ npm test -- test/FuzzySearch.test.ts              # ✅ HANA fuzzy match
 
 ---
 
-## 5 · Skill + AI-generated native `dayname()` view — 2.5 min
+## 5 · Skill + AI-generated `dayname()` column — 2.5 min
 
 **5a.** Open the skill: [.agents/skills/hana-testing/SKILL.md](.agents/skills/hana-testing/SKILL.md).
 One sentence: "Any agent that touches CAP DB code MUST add a HANA-backed test."
 
 **5b.** Ask the AI agent (paste this prompt):
 
-> Add a `PlayerProfiles` view to `WorldCupService` that returns each player's birth
-> weekday using the HANA `dayname()` function, and follow the hana-testing skill.
+> In `WorldCupService`, expand the existing `Players` projection to a wildcard
+> select and add each player's birth weekday using the HANA `dayname()` function,
+> then follow the hana-testing skill.
 
-**5c.** Expected agent edit in [srv/worldcup-service.cds](srv/worldcup-service.cds)
-(the baseline `Players` projection is already `@cds.redirection.target`, so adding
-this second projection of `worldcup.Players` compiles cleanly):
+**5c.** Expected agent edit in [srv/worldcup-service.cds](srv/worldcup-service.cds) —
+turn the plain `Players` projection into a wildcard select plus the computed column:
 
 ```cds
-  @readonly
-  entity PlayerProfiles as select from worldcup.Players {
-    key ID,
-        name,
-        position,
-        birthDate,
-        dayname(birthDate) as bornOnWeekday : String   // HANA-only
+  entity Players as projection on worldcup.Players {
+    *,
+    dayname(birthDate) as bornOnWeekday : String   // HANA-only
   };
 ```
 
-...and a HANA-backed `test/PlayerProfiles.test.ts` (HANA returns the weekday in
+...and a HANA-backed `test/BornOnWeekday.test.ts` (HANA returns the weekday in
 UPPERCASE — the agent verifies on HANA):
 
 ```ts
 import cds from '@sap/cds';
 const { GET, expect } = cds.test(__dirname + '/..');
 
-describe('PlayerProfiles — HANA dayname() (HANA only)', () => {
-  it('returns the birth weekday for each player', async () => {
-    const { data } = await GET`/odata/v4/worldcup/PlayerProfiles`;
+describe('Players.bornOnWeekday — HANA dayname() (HANA only)', () => {
+  it('returns each player\u2019s birth weekday', async () => {
+    const { data } = await GET`/odata/v4/worldcup/Players?$filter=ID eq 1`;
     // 1998-12-20 is a Sunday
-    expect(data.value).to.containSubset([{ ID: 1, bornOnWeekday: 'SUNDAY' }]);
+    expect(data.value[0]).to.include({ ID: 1, bornOnWeekday: 'SUNDAY' });
   });
 });
 ```
 
-**5d.** Deploy + run:
+**5d.** Run it — the `Players` projection changed, so redeploy its view before the
+HANA run:
 
 ```bash
-npm run deploy:test
-npm test
+npm run test:sqlite -- test/BornOnWeekday.test.ts   # ❌ no such function: dayname
+npm run deploy:test                                 # Players view now has bornOnWeekday
+npm test -- test/BornOnWeekday.test.ts              # ✅ HANA returns SUNDAY, …
 ```
 
 **Close:** "The skill makes 'test it on HANA' the default — even when an AI writes
@@ -185,7 +183,7 @@ the code."
 
 ```bash
 git checkout -- srv/worldcup-service.cds
-git clean -f test/FuzzySearch.test.ts test/PlayerProfiles.test.ts 2>/dev/null
+git clean -f test/FuzzySearch.test.ts test/BornOnWeekday.test.ts 2>/dev/null
 npm run deploy:test      # redeploy clean model
 ```
 
