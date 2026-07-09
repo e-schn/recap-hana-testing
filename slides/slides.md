@@ -21,7 +21,7 @@ fonts:
 
 # Testing with HANA Cloud
 
-<div class="text-xl opacity-90">Armin Hatting · Corporate Business Solutions GmbH</div>
+<div class="text-xl opacity-90">Armin Hatting · Corporate Business Solutions</div>
 
 <img src="./assets/cbs_logo_white_orange.png" class="w-44" />
 
