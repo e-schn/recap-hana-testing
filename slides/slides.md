@@ -44,9 +44,9 @@ hideInToc: true
 
 ### In-memory SQLite
 
-- ⚡ Fast, zero setup
-- Great for unit tests
-- ✅ Plain entities, CRUD, most logic
+- Fast, zero setup
+- Great for simple projects
+- Plain entities, CRUD, most logic
 
 </div>
 
@@ -54,9 +54,9 @@ hideInToc: true
 
 ### SAP HANA Cloud
 
-- ✅ HANA synonyms / hdbviews / procedures / calculation views
-- ✅ HANA-specific SQL and Functions
-- ✅ Production-like
+- HANA synonyms / hdbviews / procedures / calculation views
+- HANA-specific SQL and Functions
+- Production-like
 
 </div>
 

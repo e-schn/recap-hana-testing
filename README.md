@@ -1,4 +1,4 @@
-# World Cup Squad Explorer — Testing CAP Applications with SAP HANA Cloud (vitest)
+# World Cup Explorer — Testing CAP Applications with SAP HANA Cloud (vitest)
 
 A small SAP CAP project — themed around the **FIFA World Cup 2026** — that
 demonstrates **automated testing against SAP HANA Cloud** using **vitest**.
@@ -8,28 +8,12 @@ with all tests green**. That's the point: a working, fast, portable app. During 
 demo, **two HANA-only features are added live** — each proven by a test that is
 **red on SQLite and green on real HANA**:
 
-1. **Fuzzy search** the CAP-idiomatic way (`$search` + `@Search.fuzzinessThreshold`).
+1. **Fuzzy search** the CAP-idiomatic way (`$search`).
 2. A **native HANA SQL function** in a CDS view (`dayname()`), generated live by an
    AI agent following the `hana-testing` skill.
 
-These two features live in **DEMO.md**, not in the baseline — so out of the box
-`npm run test:sqlite` is fully green.
-
 This README is the **complete runbook**: every command shown in the talk is here so
 you can reproduce the demo afterwards.
-
----
-
-## TL;DR
-
-```bash
-npm install
-npm run test:sqlite     # SQLite: baseline — fully GREEN
-npm run watch           # open the Fiori preview app (Teams / Matches / Players)
-# ...set up HANA (below)...
-npm test                # HANA: baseline tests pass here too
-# ...then follow DEMO.md to live-add the two HANA-only features...
-```
 
 ---
 
@@ -243,19 +227,13 @@ the container clean between runs.
 ## Step 6 — Run the tests against real HANA
 
 ```bash
-npm test
+npm run test:hana
 # equivalent to:  cds bind --exec --profile hana vitest run
 ```
 
-TypeScript projects (this one) also have:
-
-```bash
-npm run test:ts
-# CDS_TYPESCRIPT='true' cds bind --exec --profile hana vitest run
-```
 
 Expected result: the **same baseline specs pass on HANA** too
-(`WorldCupService.test.ts`, `Players.test.ts`). The only thing that changed is the
+(`Players.test.ts`). The only thing that changed is the
 database behind them. From here, follow **DEMO.md** to live-add fuzzy search and
 the `dayname()` view and watch each go red on SQLite and green on HANA.
 
