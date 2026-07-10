@@ -28,9 +28,6 @@ entity Matches {
       awayGoals : Integer;
 }
 
-/**
- * Star players — deliberately hard-to-spell names so fuzzy search
- */
 entity Players {
   key ID        : Integer;
       name      : String;   // Mbappé, Gündoğan, Vinícius Júnior, ...

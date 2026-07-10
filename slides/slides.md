@@ -121,8 +121,7 @@ cf target -o "$CF_ORG" -s "$CF_SPACE"
 cf create-service hana hdi-shared <cap-test-instance>
 
 # 3. Bind + deploy the model into that container
-cds bind --to <cap-test-instance> --for hana
-cds deploy --to hana:<cap-test-instance> --profile hana --auto-undeploy
+cds deploy --to hana:<cap-test-instance> --profile hana --for hana --auto-undeploy
 
 # 4. Run the tests against real HANA
 cds bind --exec --profile hana vitest run
