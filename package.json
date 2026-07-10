@@ -28,7 +28,7 @@
     "build": "cds build --production",
     "test:sqlite": "NODE_ENV=development cds_requires_db_credentials_url=:memory: vitest run",
     "test:hana": "cds bind --exec --profile hana vitest run",
-    "deploy:hana": "cds deploy --to hana:recap-test-hana-db --profile hana --for hana --auto-undeploy",
+    "deploy:hana": "cds deploy --to hana:recap-test-hana-db --for hana --auto-undeploy",
     "repl:hana": "cds bind --exec --profile hana cds repl -- --run ."
   },
   "cds": {
