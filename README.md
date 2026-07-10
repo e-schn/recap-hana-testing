@@ -81,7 +81,6 @@ test/
   Players.test.ts                # baseline — passes on SQLite and HANA
 .agents/skills/
   hana-testing/SKILL.md          # AI skill: always add HANA-backed tests
-DEMO.md                          # the live demo runbook (fuzzy search + dayname view)
 vitest.config.ts
 package.json                     # hana profile = HANA; scripts
 ```
@@ -101,7 +100,7 @@ The domain model in `db/schema.cds` is entirely plain, persisted entities:
 There are **no HANA-only entities in the baseline** — everything here runs on both
 SQLite and HANA.
 
-### The two HANA-only features (added live — see DEMO.md)
+### The two HANA-only features
 
 Both features below are **not** in the committed baseline. They are added on stage
 during the demo, each with a test that is **red on SQLite, green on real HANA**.
@@ -109,15 +108,7 @@ during the demo, each with a test that is **red on SQLite, green on real HANA**.
 **1. Fuzzy search (CAP-idiomatic)**
 
 Typo tolerance is added the CAP best-practice way — the standard OData `$search`
-query option plus a `@Search.fuzzinessThreshold` annotation, **not** hand-written
-native SQL:
-
-```cds
-annotate WorldCupService.Players with {
-  @Search.fuzzinessThreshold: 0.7
-  name;
-};
-```
+query option.
 
 On **SQLite**, `$search` compiles to a `LIKE '%…%'` substring match, so
 `?$search=Mbape` returns **nothing**. On **SAP HANA Cloud**, the same query
