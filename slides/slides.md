@@ -85,7 +85,7 @@ hideInToc: true
 export default defineConfig({
   test: {
     environment: 'node',
-    testTimeout: 120_000,
+    testTimeout: 120_000, // HANA round-trips are slower
     pool: 'forks',
     execArgv: ['--import', 'tsx'],
     include: ['test/**/*.test.ts'],

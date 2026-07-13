@@ -5,15 +5,66 @@ demonstrates **automated testing against SAP HANA Cloud** using **vitest**.
 
 The committed baseline is a **normal CAP app that runs fully on in-memory SQLite,
 with all tests green**. That's the point: a working, fast, portable app. During the
-demo, **two HANA-only features are added live** — each proven by a test that is
+demo, **a HANA-only feature is added live** — proven by a test that is
 **red on SQLite and green on real HANA**:
 
 1. **Fuzzy search** the CAP-idiomatic way (`$search`).
-2. A **native HANA SQL function** in a CDS view (`dayname()`), generated live by an
-   AI agent following the `hana-testing` skill.
 
 This README is the **complete runbook**: every command shown in the talk is here so
 you can reproduce the demo afterwards.
+
+---
+
+## Setting up vitest
+
+If you're starting from a plain CAP project, add the test tooling first. Install the
+dev dependencies (this is exactly what the `init:test-setup` script does):
+
+```bash
+npm add -D @cap-js/cds-test @vitest/coverage-v8 @vitest/ui vitest
+# or, using the script:
+npm run init:test-setup
+```
+
+| Package               | Why it's needed                                             |
+| --------------------- | ----------------------------------------------------------- |
+| `vitest`              | Test runner                                                 |
+| `@vitest/coverage-v8` | Code-coverage reporting (`--coverage`)                      |
+| `@vitest/ui`          | Browser UI for inspecting test runs (`--ui`)                |
+| `@cap-js/cds-test`    | `cds.test` helper for bootstrapping the CAP server in tests |
+
+To run TypeScript tests directly you also need **`tsx`** (`npm add -D tsx`), which
+the vitest config below loads via `execArgv`.
+
+Then add a `vitest.config.ts` at the project root:
+
+```ts
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    testTimeout: 120_000,
+    pool: 'forks',
+    execArgv: ['--import', 'tsx'],
+    include: ['test/**/*.test.ts'],
+    fileParallelism: false,
+    coverage: {
+      provider: 'v8',
+      include: ['srv/**/*.{ts,tsx}']
+    }
+  },
+});
+```
+
+Key choices:
+
+- **`pool: 'forks'` + `fileParallelism: false`** run tests sequentially in a single
+  fork, so specs never clash over the shared HANA test container.
+- **`testTimeout: 120_000`** gives HANA round-trips enough headroom (they're slower
+  than in-memory SQLite).
+- **`execArgv: ['--import', 'tsx']`** lets tests run TypeScript directly via `tsx`.
+- **`coverage.include: ['srv/**/*.{ts,tsx}']`** scopes coverage to service code.
 
 ---
 
@@ -24,16 +75,14 @@ HANA and must be tested there:
 
 - Native HANA artifacts: **`.hdbview`**, calculation views, `.hdbtable`,
   `.hdbfunction`, procedures
-- HANA-specific SQL and functions (`dayname`, fuzzy `CONTAINS`, spatial/window
-  functions)
+- HANA-specific SQL and functions (fuzzy `CONTAINS`, spatial/window functions)
 - Fuzzy `$search` behavior (typo tolerance) that SQLite reduces to a plain `LIKE`
 - HDI deployment artifacts and production-like persistence
 
 CAP deliberately standardizes many **portable** functions that behave the same on
 every database (e.g. `year/month/day`, `years_between`, `round`, `rank() over`,
 `matchespattern`). A good "HANA-only" example must avoid those — which is exactly
-why this demo uses `dayname()` and fuzzy `$search`, neither of which SQLite can
-reproduce. See
+why this demo uses fuzzy `$search`, which SQLite cannot reproduce. See
 [CAP-level, portable databases](https://cap.cloud.sap/docs/guides/databases/cap-level-dbs).
 
 ---
@@ -100,12 +149,12 @@ The domain model in `db/schema.cds` is entirely plain, persisted entities:
 There are **no HANA-only entities in the baseline** — everything here runs on both
 SQLite and HANA.
 
-### The two HANA-only features
+### The HANA-only feature
 
-Both features below are **not** in the committed baseline. They are added on stage
-during the demo, each with a test that is **red on SQLite, green on real HANA**.
+The feature below is **not** in the committed baseline. It is added on stage
+during the demo, with a test that is **red on SQLite, green on real HANA**.
 
-**1. Fuzzy search (CAP-idiomatic)**
+**Fuzzy search (CAP-idiomatic)**
 
 Typo tolerance is added the CAP best-practice way — the standard OData `$search`
 query option.
@@ -115,27 +164,6 @@ On **SQLite**, `$search` compiles to a `LIKE '%…%'` substring match, so
 compiles to fuzzy `CONTAINS(… FUZZY)`, so `?$search=Mbape` finds **"Kylian
 Mbappé"**. Same standard OData query — only HANA makes it typo-tolerant. See
 [Fuzzy Search (served out of the box)](https://cap.cloud.sap/docs/guides/services/served-ootb#fuzzy-search).
-
-**2. Native HANA SQL function in a CDS view (`dayname()`)**
-
-A `PlayerProfiles` view computes each player's birth weekday using the HANA
-function `dayname()`:
-
-```cds
-@readonly
-entity PlayerProfiles as select from worldcup.Players {
-  key ID,
-      name,
-      position,
-      birthDate,
-      dayname(birthDate) as bornOnWeekday : String   // HANA-only
-};
-```
-
-`dayname()` is **not** one of CAP's portable functions and is absent from SQLite,
-so this errors `no such function: dayname` on SQLite and works on HANA (returning
-e.g. `SUNDAY`). This part is generated **live by an AI agent** guided by the
-`hana-testing` skill, which forces a HANA-backed test.
 
 ---
 
@@ -226,7 +254,7 @@ npm run test:hana
 Expected result: the **same baseline specs pass on HANA** too
 (`Players.test.ts`). The only thing that changed is the
 database behind them. From here, follow **DEMO.md** to live-add fuzzy search and
-the `dayname()` view and watch each go red on SQLite and green on HANA.
+watch it go red on SQLite and green on HANA.
 
 ## Step 7 — (Optional) Inspect data in the REPL
 
@@ -294,7 +322,7 @@ cf target -o "$CF_ORG" -s "$CF_SPACE"
 discovers it will automatically add HANA-backed vitest tests when generating new
 CAP entities, services, handlers, or native HANA artifacts — so "test with HANA"
 becomes the default, not an afterthought. In the demo, this skill is what makes the
-AI generate the `dayname()` view **together with** a HANA-backed test.
+AI generate new HANA-backed features **together with** a HANA-backed test.
 
 ---
 
@@ -318,16 +346,6 @@ On SQLite, `$search` is only a `LIKE '%…%'` substring match, so a typo like
 `cds bind --exec --profile hana ...` against HANA (with the
 `@Search.fuzzinessThreshold` annotation in place) to get the typo-tolerant match.
 
-**`no such function: dayname`**
-`dayname()` is HANA-only and does not exist on SQLite — this error means you're
-still on SQLite. Run via `cds bind --exec --profile hana ...` against the bound HANA
-instance, and make sure the model with the `PlayerProfiles` view was deployed
-(`npm run deploy:test`).
-
 **Missing/unexpected data**
 Confirm deployment succeeded; use the REPL to inspect rows; ensure sample CSVs are
 deterministic.
-
-## HANA Functions
-
-[HANA Functions](https://help.sap.com/docs/SAP_HANA_PLATFORM/4fe29514fd584807ac9f2a04f6754767/f12b86a6284c4aeeb449e57eb5dd3ebd.html)

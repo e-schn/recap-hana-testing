@@ -29,8 +29,8 @@
     "watch": "cds watch",
     "build": "cds build --production",
     "init:test-setup": "npm add -D @cap-js/cds-test @vitest/coverage-v8 @vitest/ui vitest",
-    "test:sqlite": "NODE_ENV=development CDS_TYPESCRIPT=true cds_requires_db_credentials_url=:memory: vitest --coverage --ui",
-    "test:hana": "CDS_TYPESCRIPT=true cds bind --exec --profile hana vitest run -- --coverage",
+    "test:sqlite": "NODE_ENV=development CDS_TYPESCRIPT=true cds_requires_db_credentials_url=:memory: vitest --coverage --ui --open=false",
+    "test:hana": "CDS_TYPESCRIPT=true cds bind --exec --profile hana vitest -- --coverage",
     "deploy:hana": "cds deploy --to hana:recap-test-hana-db --for hana --auto-undeploy",
     "repl:hana": "cds bind --exec --profile hana cds repl -- --run ."
   },
