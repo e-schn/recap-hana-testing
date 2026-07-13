@@ -9,6 +9,7 @@ gen/
 mta_archives/
 resources/
 *.mtar
+coverage/
 
 # Local SQLite databases
 *.sqlite

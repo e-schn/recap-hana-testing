@@ -15,11 +15,11 @@ fonts:
   weights: '400,500,600,700'
 ---
 
-<div class="flex flex-col items-center justify-center gap-4">
+<div class="flex flex-col items-center justify-center gap-0">
 
-<img src="./assets/logo.png" class="w-60" />
+<img src="./assets/logo.png" class="w-55" />
 
-# Testing with HANA Cloud
+# Automated Testing <br> with HANA Cloud
 
 <div class="text-xl opacity-90">Armin Hatting · Corporate Business Solutions</div>
 
@@ -84,10 +84,16 @@ hideInToc: true
 // vitest.config.ts
 export default defineConfig({
   test: {
-    globals: true,
-    testTimeout: 120_000,          // HANA round-trips are slower
+    environment: 'node',
+    testTimeout: 120_000,
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    execArgv: ['--import', 'tsx'],
+    include: ['test/**/*.test.ts'],
+    fileParallelism: false,
+    coverage: {
+      provider: 'v8',
+      include: ['srv/**/*.{ts,tsx}']
+    }
   },
 });
 ```
@@ -124,7 +130,7 @@ cf create-service hana hdi-shared <cap-test-instance>
 cds deploy --to hana:<cap-test-instance> --for hana --auto-undeploy
 
 # 4. Run the tests against real HANA
-cds bind --exec --profile hana vitest run
+cds bind --exec --profile hana vitest run -- --coverage
 
 # 5. Clean up (optional)
 cf delete-service <cap-test-instance>

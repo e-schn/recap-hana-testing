@@ -6,7 +6,7 @@ const { GET, expect } = cds.test(__dirname + '/..');
 describe('Players — Integration Tests', () => {
   it('serves players with their team', async () => {
     const { data } = await GET`/odata/v4/worldcup/Players?$filter=ID eq 1&$expand=team`;
-    expect(data.value[0]).to.include({ name: 'Kylian Mbappé', position: 'Forward' });
+    expect(data.value[0]).to.include({ name: 'Kylian Mbappé', position: 'Forward ⚽' });
     expect(data.value[0].team).to.include({ name: 'France' });
   });
 
