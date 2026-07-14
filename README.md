@@ -68,115 +68,6 @@ Key choices:
 
 ---
 
-## Why test with HANA?
-
-Most CAP tests run fast on in-memory SQLite. But some behavior only exists on SAP
-HANA and must be tested there:
-
-- Native HANA artifacts: **`.hdbview`**, calculation views, `.hdbtable`,
-  `.hdbfunction`, procedures
-- HANA-specific SQL and functions (fuzzy `CONTAINS`, spatial/window functions)
-- Fuzzy `$search` behavior (typo tolerance) that SQLite reduces to a plain `LIKE`
-- HDI deployment artifacts and production-like persistence
-
-CAP deliberately standardizes many **portable** functions that behave the same on
-every database (e.g. `year/month/day`, `years_between`, `round`, `rank() over`,
-`matchespattern`). A good "HANA-only" example must avoid those — which is exactly
-why this demo uses fuzzy `$search`, which SQLite cannot reproduce. See
-[CAP-level, portable databases](https://cap.cloud.sap/docs/guides/databases/cap-level-dbs).
-
----
-
-## The app (Fiori Elements)
-
-`app/annotations.cds` adds UI annotations so the service can be shown as a small
-Fiori Elements app:
-
-- **Teams** — List Report + Object Page (team, group, confederation, coach)
-- **Matches** — List Report + Object Page (stage, city, date, home/away, score)
-- **Players** — List Report + Object Page (name, position, shirt no, birth date, team)
-
-Run `npm run watch` and open <http://localhost:4004> → follow the **Fiori preview**
-links, or go directly to:
-
-```
-http://localhost:4004/$fiori-preview/WorldCupService/Teams#preview-app
-http://localhost:4004/$fiori-preview/WorldCupService/Matches#preview-app
-http://localhost:4004/$fiori-preview/WorldCupService/Players#preview-app
-```
-
-The preview runs on SQLite, so Teams/Matches/Players show data immediately — good
-for explaining "what kind of app this is" before diving into the HANA part. The
-Players list includes deliberately hard-to-spell names (Kylian Mbappé, İlkay
-Gündoğan, Vinícius Júnior, …) so the fuzzy-search payoff later is obvious.
-
----
-
-## Project layout
-
-```
-app/
-  annotations.cds                # Fiori Elements UI annotations (Teams, Matches, Players)
-db/
-  schema.cds                     # Teams, Matches, Players (plain persisted tables)
-  data/
-    worldcup-Teams.csv           # deterministic sample data (CSV)
-    worldcup-Matches.csv
-    worldcup-Players.csv
-srv/
-  worldcup-service.cds           # WorldCupService: Teams, Matches, Players
-  worldcup-service.ts
-test/
-  Players.test.ts                # baseline — passes on SQLite and HANA
-.agents/skills/
-  hana-testing/SKILL.md          # AI skill: always add HANA-backed tests
-vitest.config.ts
-package.json                     # hana profile = HANA; scripts
-```
-
-The domain model in `db/schema.cds` is entirely plain, persisted entities:
-
-- **Teams** — `ID`, `name`, `grp`, `confederation`, `coach`; associations to
-  `Players` and `Matches`.
-- **Matches** — `ID`, `stage`, `city`, `matchDate`, `homeTeam`, `awayTeam`,
-  `homeGoals`, `awayGoals`.
-- **Players** — `ID`, `name`, `position`, `shirtNo`, `birthDate`, `team`
-  association. Seeded from `db/data/worldcup-Players.csv` with star players whose
-  accented names (Mbappé, Gündoğan, Vinícius Júnior, Tchouaméni, Álvarez, Yamal,
-  Saka, Rüdiger) make fuzzy search worth having.
-
-`srv/worldcup-service.cds` exposes **only** `Teams`, `Matches`, and `Players`.
-There are **no HANA-only entities in the baseline** — everything here runs on both
-SQLite and HANA.
-
-### The HANA-only feature
-
-The feature below is **not** in the committed baseline. It is added on stage
-during the demo, with a test that is **red on SQLite, green on real HANA**.
-
-**Fuzzy search (CAP-idiomatic)**
-
-Typo tolerance is added the CAP best-practice way — the standard OData `$search`
-query option.
-
-On **SQLite**, `$search` compiles to a `LIKE '%…%'` substring match, so
-`?$search=Mbape` returns **nothing**. On **SAP HANA Cloud**, the same query
-compiles to fuzzy `CONTAINS(… FUZZY)`, so `?$search=Mbape` finds **"Kylian
-Mbappé"**. Same standard OData query — only HANA makes it typo-tolerant. See
-[Fuzzy Search (served out of the box)](https://cap.cloud.sap/docs/guides/services/served-ootb#fuzzy-search).
-
----
-
-## Prerequisites
-
-- Node.js 20+ and npm
-- `@sap/cds-dk` (`npm i -g @sap/cds-dk`) — or use the local one via `npx cds`
-- Cloud Foundry CLI (`cf`) — <https://github.com/cloudfoundry/cli>
-- Access to an SAP BTP subaccount/space with the **SAP HANA Cloud** service entitlement
-- A running SAP HANA Cloud instance in that space (to create HDI containers against)
-
----
-
 ## Step 0 — Install
 
 ```bash
@@ -249,7 +140,6 @@ the container clean between runs.
 npm run test:hana
 # equivalent to:  cds bind --exec --profile hana vitest run
 ```
-
 
 Expected result: the **same baseline specs pass on HANA** too
 (`Players.test.ts`). The only thing that changed is the
