@@ -176,10 +176,9 @@ Run these in order in a pipeline job (add cleanup at the end):
 
 ```bash
 cf create-service hana hdi-shared <cap-test-instance>
-cds bind --to <cap-test-instance> --for hana
-cds deploy --to hana:<cap-test-instance> --profile hana --auto-undeploy
-cds bind --exec --profile hana vitest run
-cf delete-service <cap-test-instance>   # cleanup
+cds deploy --to hana:<cap-test-instance> --for hana --auto-undeploy
+cds bind --exec --profile hana vitest run -- --coverage
+cf delete-service <cap-test-instance>   # cleanup (optional)
 ```
 
 For unattended CI, log in non-interactively first, e.g.:
@@ -198,7 +197,6 @@ cf target -o "$CF_ORG" -s "$CF_SPACE"
 | ----------------- | ------------------------------------------------------------------- |
 | `test:sqlite`     | vitest on in-memory **SQLite** (dev profile) — fully green baseline |
 | `test:hana`            | vitest against **bound HANA** (`cds bind --exec --profile hana`)    |
-| `test:ts`         | same as `test`, with `CDS_TYPESCRIPT=true`                          |
 | `watch`           | `cds watch` — local dev server + Fiori preview                      |
 | `deploy:hana`     | `cds deploy --to hana:... --profile hana --auto-undeploy`           |
 | `repl:hana`       | open CAP REPL against bound HANA                                     |
@@ -213,29 +211,3 @@ discovers it will automatically add HANA-backed vitest tests when generating new
 CAP entities, services, handlers, or native HANA artifacts — so "test with HANA"
 becomes the default, not an afterthought. In the demo, this skill is what makes the
 AI generate new HANA-backed features **together with** a HANA-backed test.
-
----
-
-## Troubleshooting
-
-**`npm test` says no HDI container / Service Manager bound**
-Run `cds bind --to <cap-test-instance> --for hana` first; confirm
-`.cdsrc-private.json` exists.
-
-**Deployment fails**
-`cf services` (is the instance "create succeeded"?), check `cf target` org/space and
-permissions, re-run deploy with `--profile hana` explicit.
-
-**Tests still use SQLite**
-Ensure `package.json` has `"[hana]": { "db": "hana" }` and that you run via
-`cds bind --exec --profile hana ...` (not plain `vitest`).
-
-**Fuzzy `$search` returns nothing**
-On SQLite, `$search` is only a `LIKE '%…%'` substring match, so a typo like
-`?$search=Mbape` finds nothing — that red is expected. Run the fuzzy-search test via
-`cds bind --exec --profile hana ...` against HANA (with the
-`@Search.fuzzinessThreshold` annotation in place) to get the typo-tolerant match.
-
-**Missing/unexpected data**
-Confirm deployment succeeded; use the REPL to inspect rows; ensure sample CSVs are
-deterministic.
