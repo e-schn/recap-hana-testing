@@ -211,3 +211,7 @@ discovers it will automatically add HANA-backed vitest tests when generating new
 CAP entities, services, handlers, or native HANA artifacts — so "test with HANA"
 becomes the default, not an afterthought. In the demo, this skill is what makes the
 AI generate new HANA-backed features **together with** a HANA-backed test.
+
+**Example Request**:
+
+add a column to players entity that returns the weekday of the birthday. Use hana native function dayname. Skip hana deployment and test execution

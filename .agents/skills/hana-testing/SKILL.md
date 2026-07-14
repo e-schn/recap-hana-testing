@@ -1,14 +1,13 @@
 ---
 name: hana-testing
-description: Use when adding or changing any CAP (SAP Cloud Application Programming Model) entity, service, custom handler, or native HANA artifact (.hdbview, calculation view, .hdbtable, function, procedure) or HANA-specific SQL — ensures new code ships with automated tests that run against a real SAP HANA Cloud instance via vitest, not only in-memory SQLite.
+description: Use when adding or changing any CAP (SAP Cloud Application Programming Model) entity, service, custom handler, or native HANA artifact (.hdbview, calculation view, .hdbtable, function, procedure) or HANA-specific SQL — ensures new code ships with automated tests that run against a real SAP HANA Cloud instance via vitest.
 ---
 
 # Testing CAP Applications Against SAP HANA Cloud
 
 When you add or modify CAP code, you MUST also provide/extend automated tests that
 can run against **real SAP HANA Cloud**, using **vitest** with `@cap-js/cds-test`.
-In-memory SQLite is fine for fast unit feedback, but it does NOT validate
-HANA-specific behavior. Always add a HANA-backed integration test for anything that
+Always add a HANA-backed integration test for anything that
 depends on the database.
 
 ## When HANA-backed tests are REQUIRED (not just SQLite)
@@ -16,7 +15,7 @@ depends on the database.
 Add a HANA test whenever the change touches any of:
 
 - **Native HANA artifacts**: `.hdbview`, `.hdbcalculationview`, `.hdbtable`,
-  `.hdbfunction`, `.hdbprocedure`, `.hdbsynonym`.
+  `.hdbfunction`, `.hdbprocedure`, `.hdbsynonym`, in case the artifact is used in a service projection or custom handler.
 - **HANA-specific SQL & behavior**: functions/expressions that only exist or behave
   differently on HANA — regex functions, aggregations, window functions, spatial,
   JSON, and date-name functions like `dayname()`/`monthname()`. Also **fuzzy search**:
@@ -35,57 +34,81 @@ Every new persisted entity, service projection, or native artifact gets:
 
 1. A **vitest** spec under `test/` using `cds.test(...)`.
 2. Assertions on real query results (not mocks).
-3. It must pass under `npm test` (which runs against bound HANA), not only
-   `npm run test:local` (SQLite).
+3. It must pass under `npm run test:hana` (which runs against bound HANA), not only
+   `npm run test:sqlite` (in-memory SQLite).
 
-## Project Setup (once)
+## Project Setup (already configured in this repo)
 
-`package.json` — dependencies and scripts:
+This project is **already set up** to test against SAP HANA Cloud — you do NOT need to
+re-create dependencies, scripts, profiles, or a HANA instance. Just add your specs
+under `test/` and run the existing scripts. The current configuration, for reference:
+
+`package.json` — a **TypeScript** CAP project (cds 10 / hana 3) with dedicated scripts:
 
 ```jsonc
 {
-  "dependencies": { "@cap-js/hana": "^2", "@sap/cds": "^9" },
+  "dependencies": {
+    "@cap-js/hana": "^3",
+    "@sap/cds": "^10",
+    "@sap/xssec": "^4"
+  },
   "devDependencies": {
-    "@cap-js/cds-test": ">=0.4.1",
-    "@cap-js/sqlite": "^2",
-    "vitest": "^3"
+    "@cap-js/cds-test": "^1.0.1",
+    "@cap-js/cds-typer": ">=0.4",
+    "@cap-js/cds-types": "^0.18.0",
+    "@cap-js/sqlite": "^3",
+    "@sap/cds-dk": "^10",
+    "tsx": "^4",
+    "typescript": "^5",
+    "vitest": "^4"
   },
   "scripts": {
-    "test:local": "NODE_ENV=development CDS_ENV=development cds_requires_db_credentials_url=:memory: vitest run",
-    "test": "cds bind --exec --profile hana vitest run"
+    // fast inner loop on in-memory SQLite (no HANA binding required)
+    "test:sqlite": "NODE_ENV=development CDS_TYPESCRIPT=true cds_requires_db_credentials_url=:memory: vitest --coverage --ui --open=false",
+    // integration run against the bound HANA test container
+    "test:hana": "CDS_TYPESCRIPT=true cds bind --exec --profile hana vitest -- --coverage",
+    // (re)deploy the data model into the bound HANA HDI container
+    "deploy:hana": "cds deploy --to hana:recap-test-hana-db --for hana --auto-undeploy",
+    // REPL bound to HANA for inspecting persisted data
+    "repl:hana": "cds bind --exec --profile hana cds repl -- --run ."
   },
   "cds": {
     "requires": {
-      "[development]": { "db": "sqlite" },
-      "[hana]": { "db": "hana", "auth": { "kind": "dummy" } }
-    }
+      "[development]": { "db": "sql" },
+      "[hana]": { "db": "hana", "auth": { "kind": "dummy" } },
+      "[production]": { "db": "hana", "auth": "xsuaa" }
+    },
+    "hana": { "deploy-format": "hdbtable" }
   }
 }
 ```
 
-`vitest.config.ts` — HANA needs generous timeouts and serial execution:
+`vitest.config.ts` — HANA round-trips are slow, so timeouts are generous and specs run
+serially (single fork) against the shared HANA container:
 
 ```ts
 import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
-    globals: true,
     environment: 'node',
     testTimeout: 120_000,
-    hookTimeout: 120_000,
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    execArgv: ['--import', 'tsx'],   // run TypeScript specs directly, no build step
     include: ['test/**/*.test.ts'],
+    fileParallelism: false,          // one fork → no concurrent HANA access
+    coverage: { provider: 'v8', include: ['srv/**/*.{ts,tsx}'] },
   },
 });
 ```
 
 Notes:
-- the `test` script runs `cds bind --exec --profile hana`, so CAP activates the
-  `[hana]` profile (→ HANA). `test:local` forces `NODE_ENV=development` + in-memory
-  SQLite so `cds.test` auto-deploys a fresh DB.
-- `cds.test()` returns `{ GET, POST, PUT, DELETE, expect, axios, ... }` and works with
-  any runner; with `globals: true` you get `describe/it` without imports.
+- This is a **TypeScript** project: `CDS_TYPESCRIPT=true` + `--import tsx` let the specs
+  and CAP handlers run without a separate build step.
+- `test:hana` runs `cds bind --exec --profile hana`, so CAP activates the `[hana]`
+  profile (→ HANA) with the bound credentials. `test:sqlite` forces
+  `NODE_ENV=development` + in-memory SQLite so `cds.test` auto-deploys a fresh DB.
+- `cds.test()` returns `{ GET, POST, PUT, DELETE, expect, axios, ... }`; `describe/it`
+  come from vitest's global test API.
 
 ## Writing a Test
 
@@ -147,33 +170,36 @@ it('fuzzy search tolerates typos (HANA only)', async () => {
 
 ## Running Against Real HANA (the loop new code must pass)
 
+The HANA test instance is already provisioned and bound in this repo
+(`hana:recap-test-hana-db`). The everyday loop after changing the model or a
+projection is just two npm scripts:
+
 ```bash
-# 1. Cloud Foundry: log in and target the space
-cf login                       # or: cf login --sso
-cf target -o <org> -s <space>
+# 1. (re)deploy the changed model into the bound HANA HDI container
+npm run deploy:hana
 
-# 2. Provision a dedicated HANA test instance (HDI)
-cf create-service hana hdi-shared <cap-test-instance>
-cf services                    # wait until "create succeeded"
+# 2. run the integration tests against bound HANA
+npm run test:hana
 
-# 3. Bind the instance to the hana profile (writes .cdsrc-private.json — gitignored)
-cds bind --to <cap-test-instance> --for hana
+# fast inner loop without HANA (in-memory SQLite):
+npm run test:sqlite
+```
 
-# 4. Deploy the data model into the test container
-cds deploy --to hana:<cap-test-instance> --profile hana --auto-undeploy
+First-time / CI provisioning of a fresh instance (NOT needed for day-to-day work here):
 
-# 5. Run the tests with the bound credentials
-cds bind --exec --profile hana vitest run
-# TypeScript projects:
-CDS_TYPESCRIPT='true' cds bind --exec --profile hana vitest run
+```bash
+cf login && cf target -o <org> -s <space>
+cf create-service hana hdi-shared recap-test-hana-db   # wait for "create succeeded"
+cds bind --to recap-test-hana-db --profile hana        # write the binding
+npm run deploy:hana && npm run test:hana
 ```
 
 Inspect persisted data when an assertion fails:
 
 ```bash
-cds bind --exec --profile hana cds repl -- --run .
+npm run repl:hana
 # then, in the REPL:
-await SELECT.from('WorldCupService.Teams')
+await SELECT.from('WorldCupService.Players')
 await SELECT.from('WORLDCUP_TEAM_STANDINGS')
 ```
 
@@ -184,8 +210,8 @@ await SELECT.from('WORLDCUP_TEAM_STANDINGS')
 - Never hardcode credentials — always use `cds bind`. Never commit
   `.cdsrc-private.json`.
 - Treat HANA tests as an integration gate; keep fast SQLite unit tests too.
-- In CI: `cf create-service` → `cds bind --for hana` → `cds deploy ... --profile hana`
-  → `cds bind --exec --profile hana vitest run`, then clean up the instance.
+- In CI: `cf create-service` → `cds bind --to <inst> --profile hana` →
+  `npm run deploy:hana` → `npm run test:hana`, then clean up the instance.
 
 ## Common Mistakes
 
@@ -196,12 +222,12 @@ await SELECT.from('WORLDCUP_TEAM_STANDINGS')
   (false green). Use genuinely non-portable SQL (e.g. `dayname`, `initcap`, regex,
   fuzzy `$search`). See the CAP "portable functions" list before claiming HANA-only.
 - **Local (SQLite) script hangs connecting HANA to `:memory:`.** The HANA profile
-  is `[hana]`; the local SQLite script MUST set `NODE_ENV=development` (not only
+  is `[hana]`; the `test:sqlite` script MUST set `NODE_ENV=development` (not only
   `CDS_ENV=development`), otherwise CAP loads the HANA driver against `:memory:` and
   the run hangs instead of using SQLite.
 - **Stale deployed view after changing a projection.** Changing a CDS view /
   service projection (adding a computed column, `*` + expression, etc.) changes the
-  generated HANA view. Run `cds deploy ... --profile hana` BEFORE `npm test`, or the
+  generated HANA view. Run `npm run deploy:hana` BEFORE `npm run test:hana`, or the
   runtime queries the old view and fails with `invalid column name: <NEWCOL>`.
 - **Ambiguous redirection with a second projection.** Exposing the same entity twice
   (e.g. a second `as projection on worldcup.Players`) breaks compilation with
@@ -212,6 +238,6 @@ await SELECT.from('WORLDCUP_TEAM_STANDINGS')
 ## Definition of Done for New CAP Code
 
 - [ ] New/changed entity, service, handler, or native artifact has a vitest spec.
-- [ ] The spec passes under `npm test` (bound HANA), not only `npm run test:local`.
+- [ ] The spec passes under `npm run test:hana` (bound HANA), not only `npm run test:sqlite`.
 - [ ] Native-HANA behavior (native views, HANA-only functions/SQL) is asserted on real HANA.
 - [ ] No credentials committed; bindings created via `cds bind`.
