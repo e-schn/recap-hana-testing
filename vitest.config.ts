@@ -12,6 +12,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     testTimeout: 120_000,
+    hookTimeout: 120_000,
     pool: 'forks',
     execArgv: ['--import', 'tsx'],
     include: ['test/**/*.test.ts'],
